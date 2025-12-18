@@ -217,7 +217,7 @@
     <div class="calculator-container">
         <h1>Pricing Calculator</h1>
         <p class="subtitle">Enter any 2 values to calculate the rest</p>
-        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v4.0 - NRE + Lock + Copy</p>
+        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v4.1 - Live Recalculation</p>
 
         <div class="info-box">
             💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
@@ -244,7 +244,7 @@
             <div class="field-header">
                 <label for="bomCost">Manufacturer BOM Cost</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockBomCost"> 🔒 Lock
+                    <input type="checkbox" id="lockBomCost"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -257,7 +257,7 @@
             <div class="field-header">
                 <label for="mfgMargin">Manufacturer Margin</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockMfgMargin"> 🔒 Lock
+                    <input type="checkbox" id="lockMfgMargin"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -270,7 +270,7 @@
             <div class="field-header">
                 <label for="nre">NRE (Non-Recurring Engineering)</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockNre"> 🔒 Lock
+                    <input type="checkbox" id="lockNre"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -283,7 +283,7 @@
             <div class="field-header">
                 <label for="dealerCost">Dealer Cost (includes NRE)</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockDealerCost"> 🔒 Lock
+                    <input type="checkbox" id="lockDealerCost"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -296,7 +296,7 @@
             <div class="field-header">
                 <label for="dealerMargin">Dealer Margin</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockDealerMargin"> 🔒 Lock
+                    <input type="checkbox" id="lockDealerMargin"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -309,7 +309,7 @@
             <div class="field-header">
                 <label for="msrp">MSRP (Retail Price)</label>
                 <label class="lock-checkbox">
-                    <input type="checkbox" id="lockMsrp"> 🔒 Lock
+                    <input type="checkbox" id="lockMsrp"> Manual
                 </label>
             </div>
             <div class="input-wrapper">
@@ -333,20 +333,19 @@
 
         const inputs = [bomCostInput, mfgMarginInput, nreInput, dealerCostInput, dealerMarginInput, msrpInput];
 
-        // Track locked fields
-        const locked = new Set();
+        // Track manually entered fields (won't be recalculated)
+        const manual = new Set();
 
-        // Track which fields currently have user-entered values
-        const userEntered = new Set();
-
-        // Add event listeners for lock checkboxes
+        // Add event listeners for manual checkboxes
         ['bomCost', 'mfgMargin', 'nre', 'dealerCost', 'dealerMargin', 'msrp'].forEach(fieldId => {
-            const lockCheckbox = document.getElementById('lock' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1));
-            lockCheckbox.addEventListener('change', function() {
+            const manualCheckbox = document.getElementById('lock' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1));
+            manualCheckbox.addEventListener('change', function() {
                 if (this.checked) {
-                    locked.add(fieldId);
+                    manual.add(fieldId);
                 } else {
-                    locked.delete(fieldId);
+                    manual.delete(fieldId);
+                    // When unmarking as manual, recalculate
+                    calculate();
                 }
             });
         });
@@ -354,27 +353,9 @@
         // Add event listeners to all inputs
         inputs.forEach(input => {
             input.addEventListener('input', function(e) {
-                // When user changes a value, mark it as user-entered
-                if (this.value !== '') {
-                    userEntered.add(this.id);
-                } else {
-                    userEntered.delete(this.id);
-                }
-
-                // Clear all calculated fields before recalculating
-                clearCalculatedFields();
                 calculate();
             });
         });
-
-        // Clear fields that were calculated (not user-entered and not locked)
-        function clearCalculatedFields() {
-            inputs.forEach(input => {
-                if (!userEntered.has(input.id) && !locked.has(input.id)) {
-                    input.value = '';
-                }
-            });
-        }
 
         // Round up to nearest $9 (e.g., $333.33 -> $339, $100.50 -> $109)
         function roundUpToNearest9(value) {
@@ -402,7 +383,7 @@
             // Determine what we can calculate based on what we have
 
             // Case 1: We have bomCost and mfgMargin -> calculate dealerCost (including NRE)
-            if (bomCost !== null && mfgMargin !== null && !userEntered.has('dealerCost') && !locked.has('dealerCost')) {
+            if (bomCost !== null && mfgMargin !== null && !manual.has('dealerCost')) {
                 if (mfgMargin >= 100) {
                     alert('Manufacturer margin must be less than 100%');
                     return;
@@ -413,7 +394,7 @@
             }
 
             // Case 2: We have bomCost and dealerCost -> calculate mfgMargin (accounting for NRE)
-            if (bomCost !== null && dealerCost !== null && !userEntered.has('mfgMargin') && !locked.has('mfgMargin') && dealerCost !== 0) {
+            if (bomCost !== null && dealerCost !== null && !manual.has('mfgMargin') && dealerCost !== 0) {
                 const baseDealerCost = dealerCost - nre;
                 if (baseDealerCost > 0 && bomCost > 0) {
                     const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
@@ -422,14 +403,14 @@
             }
 
             // Case 3: We have dealerCost and mfgMargin -> calculate bomCost (accounting for NRE)
-            if (dealerCost !== null && mfgMargin !== null && !userEntered.has('bomCost') && !locked.has('bomCost')) {
+            if (dealerCost !== null && mfgMargin !== null && !manual.has('bomCost')) {
                 const baseDealerCost = dealerCost - nre;
                 const calculatedBomCost = baseDealerCost * (1 - mfgMargin / 100);
                 bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
             }
 
             // Case 4: We have dealerCost and dealerMargin -> calculate msrp
-            if (dealerCost !== null && dealerMargin !== null && !userEntered.has('msrp') && !locked.has('msrp')) {
+            if (dealerCost !== null && dealerMargin !== null && !manual.has('msrp')) {
                 if (dealerMargin >= 100) {
                     alert('Dealer margin must be less than 100%');
                     return;
@@ -439,13 +420,13 @@
             }
 
             // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && !userEntered.has('dealerMargin') && !locked.has('dealerMargin') && msrp !== 0) {
+            if (dealerCost !== null && msrp !== null && !manual.has('dealerMargin') && msrp !== 0) {
                 const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
             // Case 6: We have msrp and dealerMargin -> calculate dealerCost
-            if (msrp !== null && dealerMargin !== null && !userEntered.has('dealerCost') && !locked.has('dealerCost')) {
+            if (msrp !== null && dealerMargin !== null && !manual.has('dealerCost')) {
                 const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
@@ -525,9 +506,8 @@ MSRP: $${msrp}`;
             inputs.forEach(input => {
                 input.value = '';
             });
-            userEntered.clear();
-            locked.clear();
-            // Uncheck all lock checkboxes
+            manual.clear();
+            // Uncheck all manual checkboxes
             document.querySelectorAll('.lock-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
