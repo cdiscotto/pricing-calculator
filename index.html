@@ -336,6 +336,9 @@
         // Track manually entered fields (won't be recalculated)
         const manual = new Set();
 
+        // Track which field is currently being edited (don't recalculate it)
+        let currentlyEditing = null;
+
         // Add event listeners for manual checkboxes
         ['bomCost', 'mfgMargin', 'nre', 'dealerCost', 'dealerMargin', 'msrp'].forEach(fieldId => {
             const manualCheckbox = document.getElementById('lock' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1));
@@ -353,7 +356,15 @@
         // Add event listeners to all inputs
         inputs.forEach(input => {
             input.addEventListener('input', function(e) {
+                // Mark this field as currently being edited
+                currentlyEditing = this.id;
                 calculate();
+                // Clear after a short delay
+                setTimeout(() => {
+                    if (currentlyEditing === this.id) {
+                        currentlyEditing = null;
+                    }
+                }, 100);
             });
         });
 
@@ -383,7 +394,7 @@
             // Determine what we can calculate based on what we have
 
             // Case 1: We have bomCost and mfgMargin -> calculate dealerCost (including NRE)
-            if (bomCost !== null && mfgMargin !== null && !manual.has('dealerCost')) {
+            if (bomCost !== null && mfgMargin !== null && !manual.has('dealerCost') && currentlyEditing !== 'dealerCost') {
                 if (mfgMargin >= 100) {
                     alert('Manufacturer margin must be less than 100%');
                     return;
@@ -394,7 +405,7 @@
             }
 
             // Case 2: We have bomCost and dealerCost -> calculate mfgMargin (accounting for NRE)
-            if (bomCost !== null && dealerCost !== null && !manual.has('mfgMargin') && dealerCost !== 0) {
+            if (bomCost !== null && dealerCost !== null && !manual.has('mfgMargin') && currentlyEditing !== 'mfgMargin' && dealerCost !== 0) {
                 const baseDealerCost = dealerCost - nre;
                 if (baseDealerCost > 0 && bomCost > 0) {
                     const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
@@ -403,14 +414,14 @@
             }
 
             // Case 3: We have dealerCost and mfgMargin -> calculate bomCost (accounting for NRE)
-            if (dealerCost !== null && mfgMargin !== null && !manual.has('bomCost')) {
+            if (dealerCost !== null && mfgMargin !== null && !manual.has('bomCost') && currentlyEditing !== 'bomCost') {
                 const baseDealerCost = dealerCost - nre;
                 const calculatedBomCost = baseDealerCost * (1 - mfgMargin / 100);
                 bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
             }
 
             // Case 4: We have dealerCost and dealerMargin -> calculate msrp
-            if (dealerCost !== null && dealerMargin !== null && !manual.has('msrp')) {
+            if (dealerCost !== null && dealerMargin !== null && !manual.has('msrp') && currentlyEditing !== 'msrp') {
                 if (dealerMargin >= 100) {
                     alert('Dealer margin must be less than 100%');
                     return;
@@ -420,13 +431,13 @@
             }
 
             // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && !manual.has('dealerMargin') && msrp !== 0) {
+            if (dealerCost !== null && msrp !== null && !manual.has('dealerMargin') && currentlyEditing !== 'dealerMargin' && msrp !== 0) {
                 const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
             // Case 6: We have msrp and dealerMargin -> calculate dealerCost
-            if (msrp !== null && dealerMargin !== null && !manual.has('dealerCost')) {
+            if (msrp !== null && dealerMargin !== null && !manual.has('dealerCost') && currentlyEditing !== 'dealerCost') {
                 const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
