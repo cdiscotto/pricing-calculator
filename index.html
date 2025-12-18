@@ -358,13 +358,20 @@
             input.addEventListener('input', function(e) {
                 // Mark this field as currently being edited
                 currentlyEditing = this.id;
-                calculate();
-                // Clear after a short delay
-                setTimeout(() => {
+
+                // Delay calculation slightly to allow smooth typing
+                clearTimeout(window.calcTimeout);
+                window.calcTimeout = setTimeout(() => {
+                    calculate();
+                }, 150);
+
+                // Clear currently editing after user stops typing
+                clearTimeout(window.editTimeout);
+                window.editTimeout = setTimeout(() => {
                     if (currentlyEditing === this.id) {
                         currentlyEditing = null;
                     }
-                }, 100);
+                }, 500);
             });
         });
 
@@ -413,14 +420,9 @@
                 }
             }
 
-            // Case 3: We have dealerCost and mfgMargin -> calculate bomCost (accounting for NRE)
-            if (dealerCost !== null && mfgMargin !== null && !manual.has('bomCost') && currentlyEditing !== 'bomCost') {
-                const baseDealerCost = dealerCost - nre;
-                const calculatedBomCost = baseDealerCost * (1 - mfgMargin / 100);
-                bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
-            }
+            // BOM Cost and NRE are NEVER calculated - they are always user inputs
 
-            // Case 4: We have dealerCost and dealerMargin -> calculate msrp
+            // Case 3: We have dealerCost and dealerMargin -> calculate msrp
             if (dealerCost !== null && dealerMargin !== null && !manual.has('msrp') && currentlyEditing !== 'msrp') {
                 if (dealerMargin >= 100) {
                     alert('Dealer margin must be less than 100%');
