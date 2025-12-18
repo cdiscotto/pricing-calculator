@@ -287,6 +287,16 @@
             }
         }
 
+        // Round up to nearest $9 (e.g., $333.33 -> $339, $100.50 -> $109)
+        function roundUpToNearest9(value) {
+            const tens = Math.floor(value / 10);
+            if (value <= tens * 10 + 9) {
+                return tens * 10 + 9;
+            } else {
+                return (tens + 1) * 10 + 9;
+            }
+        }
+
         function calculate() {
             const bomCost = parseFloat(bomCostInput.value) || null;
             const mfgMargin = parseFloat(mfgMarginInput.value) || null;
@@ -294,63 +304,76 @@
             const dealerMargin = parseFloat(dealerMarginInput.value) || null;
             const msrp = parseFloat(msrpInput.value) || null;
 
-            // Pricing formulas:
-            // dealerCost = bomCost * (1 + mfgMargin/100)
-            // msrp = dealerCost * (1 + dealerMargin/100)
+            // Pricing formulas (margin as % of selling price):
+            // dealerCost = bomCost / (1 - mfgMargin/100)
+            // msrp = dealerCost / (1 - dealerMargin/100)
+            // All costs rounded up to nearest $9
 
             // Determine what we can calculate based on what we have
 
             // Case 1: We have bomCost and mfgMargin -> calculate dealerCost
             if (bomCost !== null && mfgMargin !== null && dealerCost === null) {
-                const calculatedDealerCost = bomCost * (1 + mfgMargin / 100);
-                dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                if (mfgMargin >= 100) {
+                    alert('Manufacturer margin must be less than 100%');
+                    return;
+                }
+                const calculatedDealerCost = bomCost / (1 - mfgMargin / 100);
+                dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
 
             // Case 2: We have bomCost and dealerCost -> calculate mfgMargin
-            if (bomCost !== null && dealerCost !== null && mfgMargin === null && bomCost !== 0) {
-                const calculatedMfgMargin = ((dealerCost / bomCost) - 1) * 100;
+            if (bomCost !== null && dealerCost !== null && mfgMargin === null && dealerCost !== 0) {
+                const calculatedMfgMargin = (1 - bomCost / dealerCost) * 100;
                 mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
             }
 
             // Case 3: We have dealerCost and mfgMargin -> calculate bomCost
             if (dealerCost !== null && mfgMargin !== null && bomCost === null) {
-                const calculatedBomCost = dealerCost / (1 + mfgMargin / 100);
-                bomCostInput.value = calculatedBomCost.toFixed(2);
+                const calculatedBomCost = dealerCost * (1 - mfgMargin / 100);
+                bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
             }
 
             // Case 4: We have dealerCost and dealerMargin -> calculate msrp
             if (dealerCost !== null && dealerMargin !== null && msrp === null) {
-                const calculatedMsrp = dealerCost * (1 + dealerMargin / 100);
-                msrpInput.value = calculatedMsrp.toFixed(2);
+                if (dealerMargin >= 100) {
+                    alert('Dealer margin must be less than 100%');
+                    return;
+                }
+                const calculatedMsrp = dealerCost / (1 - dealerMargin / 100);
+                msrpInput.value = roundUpToNearest9(calculatedMsrp).toFixed(2);
             }
 
             // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && dealerMargin === null && dealerCost !== 0) {
-                const calculatedDealerMargin = ((msrp / dealerCost) - 1) * 100;
+            if (dealerCost !== null && msrp !== null && dealerMargin === null && msrp !== 0) {
+                const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
             // Case 6: We have msrp and dealerMargin -> calculate dealerCost
             if (msrp !== null && dealerMargin !== null && dealerCost === null) {
-                const calculatedDealerCost = msrp / (1 + dealerMargin / 100);
-                dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
+                dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
 
             // Case 7: We have bomCost and msrp -> calculate intermediate values
             if (bomCost !== null && msrp !== null && dealerCost === null) {
                 // We need at least one margin to solve this
                 if (mfgMargin !== null) {
-                    const calculatedDealerCost = bomCost * (1 + mfgMargin / 100);
-                    dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                    if (mfgMargin >= 100) {
+                        alert('Manufacturer margin must be less than 100%');
+                        return;
+                    }
+                    const calculatedDealerCost = bomCost / (1 - mfgMargin / 100);
+                    dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
                     if (calculatedDealerCost !== 0) {
-                        const calculatedDealerMargin = ((msrp / calculatedDealerCost) - 1) * 100;
+                        const calculatedDealerMargin = (1 - calculatedDealerCost / msrp) * 100;
                         dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
                     }
                 } else if (dealerMargin !== null) {
-                    const calculatedDealerCost = msrp / (1 + dealerMargin / 100);
-                    dealerCostInput.value = calculatedDealerCost.toFixed(2);
+                    const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
+                    dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
                     if (bomCost !== 0) {
-                        const calculatedMfgMargin = ((calculatedDealerCost / bomCost) - 1) * 100;
+                        const calculatedMfgMargin = (1 - bomCost / calculatedDealerCost) * 100;
                         mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
                     }
                 }
