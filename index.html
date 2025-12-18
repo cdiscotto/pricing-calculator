@@ -189,7 +189,7 @@
     <div class="calculator-container">
         <h1>Pricing Calculator</h1>
         <p class="subtitle">Enter any 2 values to calculate the rest</p>
-        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v2.0 - Updated Formula</p>
+        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v3.0 - Fixed Logic</p>
 
         <div class="info-box">
             💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
@@ -265,28 +265,21 @@
 
         const inputs = [bomCostInput, mfgMarginInput, dealerCostInput, dealerMarginInput, msrpInput];
 
-        // Track which fields have user input
-        let userInputCount = 0;
-        let lastInputField = null;
+        // Track which fields are user-entered vs calculated
+        const userEntered = new Set();
 
         // Add event listeners to all inputs
         inputs.forEach(input => {
-            input.addEventListener('input', function() {
-                handleInputChange(this);
+            input.addEventListener('input', function(e) {
+                // Mark this field as user-entered
+                if (this.value !== '') {
+                    userEntered.add(this.id);
+                } else {
+                    userEntered.delete(this.id);
+                }
+                calculate();
             });
         });
-
-        function handleInputChange(changedInput) {
-            // Count non-empty inputs
-            const filledInputs = inputs.filter(inp => inp.value !== '' && inp.value !== null);
-            userInputCount = filledInputs.length;
-            lastInputField = changedInput;
-
-            // If we have at least 2 values, calculate the rest
-            if (userInputCount >= 2) {
-                calculate();
-            }
-        }
 
         // Round up to nearest $9 (e.g., $333.33 -> $339, $100.50 -> $109)
         function roundUpToNearest9(value) {
@@ -313,7 +306,7 @@
             // Determine what we can calculate based on what we have
 
             // Case 1: We have bomCost and mfgMargin -> calculate dealerCost
-            if (bomCost !== null && mfgMargin !== null && dealerCost === null) {
+            if (bomCost !== null && mfgMargin !== null && !userEntered.has('dealerCost')) {
                 if (mfgMargin >= 100) {
                     alert('Manufacturer margin must be less than 100%');
                     return;
@@ -323,19 +316,19 @@
             }
 
             // Case 2: We have bomCost and dealerCost -> calculate mfgMargin
-            if (bomCost !== null && dealerCost !== null && mfgMargin === null && dealerCost !== 0) {
+            if (bomCost !== null && dealerCost !== null && !userEntered.has('mfgMargin') && dealerCost !== 0) {
                 const calculatedMfgMargin = (1 - bomCost / dealerCost) * 100;
                 mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
             }
 
             // Case 3: We have dealerCost and mfgMargin -> calculate bomCost
-            if (dealerCost !== null && mfgMargin !== null && bomCost === null) {
+            if (dealerCost !== null && mfgMargin !== null && !userEntered.has('bomCost')) {
                 const calculatedBomCost = dealerCost * (1 - mfgMargin / 100);
                 bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
             }
 
             // Case 4: We have dealerCost and dealerMargin -> calculate msrp
-            if (dealerCost !== null && dealerMargin !== null && msrp === null) {
+            if (dealerCost !== null && dealerMargin !== null && !userEntered.has('msrp')) {
                 if (dealerMargin >= 100) {
                     alert('Dealer margin must be less than 100%');
                     return;
@@ -345,13 +338,13 @@
             }
 
             // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && dealerMargin === null && msrp !== 0) {
+            if (dealerCost !== null && msrp !== null && !userEntered.has('dealerMargin') && msrp !== 0) {
                 const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
             // Case 6: We have msrp and dealerMargin -> calculate dealerCost
-            if (msrp !== null && dealerMargin !== null && dealerCost === null) {
+            if (msrp !== null && dealerMargin !== null && !userEntered.has('dealerCost')) {
                 const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
@@ -395,20 +388,13 @@
                 return;
             }
 
-            // Recursively calculate if we now have more values
-            const newFilledInputs = inputs.filter(inp => inp.value !== '' && inp.value !== null);
-            if (newFilledInputs.length > userInputCount && newFilledInputs.length < 5) {
-                userInputCount = newFilledInputs.length;
-                calculate();
-            }
         }
 
         function clearAll() {
             inputs.forEach(input => {
                 input.value = '';
             });
-            userInputCount = 0;
-            lastInputField = null;
+            userEntered.clear();
         }
     </script>
 </body>
