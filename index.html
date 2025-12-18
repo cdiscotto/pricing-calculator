@@ -189,7 +189,7 @@
     <div class="calculator-container">
         <h1>Pricing Calculator</h1>
         <p class="subtitle">Enter any 2 values to calculate the rest</p>
-        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v3.0 - Fixed Logic</p>
+        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v3.1 - Dynamic Updates</p>
 
         <div class="info-box">
             💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
@@ -265,21 +265,33 @@
 
         const inputs = [bomCostInput, mfgMarginInput, dealerCostInput, dealerMarginInput, msrpInput];
 
-        // Track which fields are user-entered vs calculated
+        // Track which fields currently have user-entered values
         const userEntered = new Set();
 
         // Add event listeners to all inputs
         inputs.forEach(input => {
             input.addEventListener('input', function(e) {
-                // Mark this field as user-entered
+                // When user changes a value, mark it as user-entered
                 if (this.value !== '') {
                     userEntered.add(this.id);
                 } else {
                     userEntered.delete(this.id);
                 }
+
+                // Clear all calculated fields before recalculating
+                clearCalculatedFields();
                 calculate();
             });
         });
+
+        // Clear fields that were calculated (not user-entered)
+        function clearCalculatedFields() {
+            inputs.forEach(input => {
+                if (!userEntered.has(input.id)) {
+                    input.value = '';
+                }
+            });
+        }
 
         // Round up to nearest $9 (e.g., $333.33 -> $339, $100.50 -> $109)
         function roundUpToNearest9(value) {
