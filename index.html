@@ -40,7 +40,7 @@
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             font-size: 14px;
         }
 
@@ -336,7 +336,7 @@
         // Track manually entered fields (won't be recalculated)
         const manual = new Set();
 
-        // Track which field is currently being edited (don't recalculate it)
+        // Track which field is currently being edited
         let currentlyEditing = null;
 
         // Add event listeners for manual checkboxes
@@ -347,7 +347,6 @@
                     manual.add(fieldId);
                 } else {
                     manual.delete(fieldId);
-                    // When unmarking as manual, recalculate
                     calculate();
                 }
             });
@@ -356,7 +355,6 @@
         // Add event listeners to all inputs
         inputs.forEach(input => {
             input.addEventListener('input', function(e) {
-                // Mark this field as currently being edited
                 currentlyEditing = this.id;
 
                 // Delay calculation slightly to allow smooth typing
@@ -375,7 +373,7 @@
             });
         });
 
-        // Round up to nearest $9 (e.g., $333.33 -> $339, $100.50 -> $109)
+        // Round up to nearest $9
         function roundUpToNearest9(value) {
             const tens = Math.floor(value / 10);
             if (value <= tens * 10 + 9) {
@@ -388,101 +386,57 @@
         function calculate() {
             const bomCost = parseFloat(bomCostInput.value) || null;
             const mfgMargin = parseFloat(mfgMarginInput.value) || null;
-            const nre = parseFloat(nreInput.value) || 0; // Default to 0 if empty
+            const nre = parseFloat(nreInput.value) || 0;
             const dealerCost = parseFloat(dealerCostInput.value) || null;
             const dealerMargin = parseFloat(dealerMarginInput.value) || null;
             const msrp = parseFloat(msrpInput.value) || null;
 
-            // Pricing formulas (margin as % of selling price):
-            // dealerCost = (bomCost / (1 - mfgMargin/100)) + NRE
-            // msrp = dealerCost / (1 - dealerMargin/100)
-            // All costs rounded up to nearest $9
+            // BUSINESS LOGIC:
+            // Forward: BOM + NRE + Mfg Margin → Dealer Cost → Dealer Margin → MSRP
+            // Adjust MSRP: Changes Dealer Margin only (Dealer Cost stays fixed)
+            // Adjust Dealer Cost: Changes MSRP only (margins stay fixed)
+            // Adjust Mfg Margin: Recalcs Dealer Cost → Recalcs MSRP
 
-            // Determine what we can calculate based on what we have
-
-            // Case 1: We have bomCost and mfgMargin -> calculate dealerCost (including NRE)
+            // Case 1: Calculate Dealer Cost from BOM + Mfg Margin + NRE
             if (bomCost !== null && mfgMargin !== null && !manual.has('dealerCost') && currentlyEditing !== 'dealerCost') {
-                if (mfgMargin >= 100) {
-                    alert('Manufacturer margin must be less than 100%');
-                    return;
-                }
+                if (mfgMargin >= 100) return;
                 const baseDealerCost = bomCost / (1 - mfgMargin / 100);
                 const calculatedDealerCost = baseDealerCost + nre;
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
 
-            // Case 2: We have bomCost and dealerCost -> calculate mfgMargin (accounting for NRE)
-            if (bomCost !== null && dealerCost !== null && !manual.has('mfgMargin') && currentlyEditing !== 'mfgMargin' && dealerCost !== 0) {
-                const baseDealerCost = dealerCost - nre;
-                if (baseDealerCost > 0 && bomCost > 0) {
-                    const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
-                    mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
-                }
-            }
-
-            // BOM Cost and NRE are NEVER calculated - they are always user inputs
-
-            // Case 3: We have dealerCost and dealerMargin -> calculate msrp
+            // Case 2: Calculate MSRP from Dealer Cost + Dealer Margin
             if (dealerCost !== null && dealerMargin !== null && !manual.has('msrp') && currentlyEditing !== 'msrp') {
-                if (dealerMargin >= 100) {
-                    alert('Dealer margin must be less than 100%');
-                    return;
-                }
+                if (dealerMargin >= 100) return;
                 const calculatedMsrp = dealerCost / (1 - dealerMargin / 100);
                 msrpInput.value = roundUpToNearest9(calculatedMsrp).toFixed(2);
             }
 
-            // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && !manual.has('dealerMargin') && currentlyEditing !== 'dealerMargin' && msrp !== 0) {
+            // Case 3: User changed MSRP → Recalculate Dealer Margin (keep Dealer Cost fixed)
+            if (currentlyEditing === 'msrp' && msrp !== null && dealerCost !== null && dealerCost !== 0 && !manual.has('dealerMargin')) {
                 const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
-            // Case 6: We have msrp and dealerMargin -> calculate dealerCost
-            if (msrp !== null && dealerMargin !== null && !manual.has('dealerCost') && currentlyEditing !== 'dealerCost') {
-                const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
-                dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
-            }
-
-            // Case 7: We have bomCost and msrp -> calculate intermediate values
-            if (bomCost !== null && msrp !== null && dealerCost === null) {
-                // We need at least one margin to solve this
-                if (mfgMargin !== null) {
-                    if (mfgMargin >= 100) {
-                        alert('Manufacturer margin must be less than 100%');
-                        return;
-                    }
-                    const calculatedDealerCost = bomCost / (1 - mfgMargin / 100);
-                    dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
-                    if (calculatedDealerCost !== 0) {
-                        const calculatedDealerMargin = (1 - calculatedDealerCost / msrp) * 100;
-                        dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
-                    }
-                } else if (dealerMargin !== null) {
-                    const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
-                    dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
-                    if (bomCost !== 0) {
-                        const calculatedMfgMargin = (1 - bomCost / calculatedDealerCost) * 100;
+            // Case 4: User changed Dealer Cost → Recalculate Mfg Margin and MSRP
+            if (currentlyEditing === 'dealerCost' && dealerCost !== null) {
+                // Recalc Mfg Margin if we have BOM
+                if (bomCost !== null && !manual.has('mfgMargin')) {
+                    const baseDealerCost = dealerCost - nre;
+                    if (baseDealerCost > 0 && bomCost > 0) {
+                        const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
                         mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
                     }
                 }
+                // Recalc MSRP if we have Dealer Margin
+                if (dealerMargin !== null && !manual.has('msrp')) {
+                    if (dealerMargin >= 100) return;
+                    const calculatedMsrp = dealerCost / (1 - dealerMargin / 100);
+                    msrpInput.value = roundUpToNearest9(calculatedMsrp).toFixed(2);
+                }
             }
 
-            // Case 8: We have mfgMargin and dealerMargin -> need at least one cost value
-            // This is handled by the other cases
-
-            // Case 9: We have bomCost and dealerMargin
-            if (bomCost !== null && dealerMargin !== null && dealerCost === null && mfgMargin === null && msrp === null) {
-                // Can't calculate without more info - need either mfgMargin, dealerCost, or msrp
-                return;
-            }
-
-            // Case 10: We have mfgMargin and msrp
-            if (mfgMargin !== null && msrp !== null && bomCost === null && dealerCost === null && dealerMargin === null) {
-                // Can't calculate without more info - need either dealerMargin, dealerCost, or bomCost
-                return;
-            }
-
+            // BOM Cost and NRE are NEVER calculated
         }
 
         function copyToClipboard() {
@@ -501,7 +455,6 @@ Dealer Margin: ${dealerMargin}%
 MSRP: $${msrp}`;
 
             navigator.clipboard.writeText(text).then(() => {
-                // Show feedback
                 const btn = event.target;
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '✓ Copied!';
@@ -520,7 +473,6 @@ MSRP: $${msrp}`;
                 input.value = '';
             });
             manual.clear();
-            // Uncheck all manual checkboxes
             document.querySelectorAll('.lock-checkbox input[type="checkbox"]').forEach(cb => {
                 cb.checked = false;
             });
