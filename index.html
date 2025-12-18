@@ -46,14 +46,35 @@
 
         .field-group {
             margin-bottom: 25px;
+            position: relative;
+        }
+
+        .field-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .lock-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .lock-checkbox input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
         }
 
         label {
-            display: block;
-            margin-bottom: 8px;
             color: #555;
             font-weight: 600;
             font-size: 14px;
+            margin: 0;
         }
 
         .input-wrapper {
@@ -104,12 +125,11 @@
             padding-left: 35px;
         }
 
-        .clear-button {
+        .button {
             display: block;
             width: 100%;
             padding: 14px;
-            margin-top: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-top: 15px;
             color: white;
             border: none;
             border-radius: 10px;
@@ -119,12 +139,20 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .clear-button:hover {
+        .clear-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .copy-button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .button:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .clear-button:active {
+        .button:active {
             transform: translateY(0);
         }
 
@@ -189,7 +217,7 @@
     <div class="calculator-container">
         <h1>Pricing Calculator</h1>
         <p class="subtitle">Enter any 2 values to calculate the rest</p>
-        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v3.1 - Dynamic Updates</p>
+        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v4.0 - NRE + Lock + Copy</p>
 
         <div class="info-box">
             💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
@@ -213,7 +241,12 @@
         </div>
 
         <div class="field-group">
-            <label for="bomCost">Manufacturer BOM Cost</label>
+            <div class="field-header">
+                <label for="bomCost">Manufacturer BOM Cost</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockBomCost"> 🔒 Lock
+                </label>
+            </div>
             <div class="input-wrapper">
                 <span class="dollar-symbol">$</span>
                 <input type="number" id="bomCost" class="has-prefix" placeholder="0.00" step="0.01" min="0">
@@ -221,7 +254,12 @@
         </div>
 
         <div class="field-group">
-            <label for="mfgMargin">Manufacturer Margin</label>
+            <div class="field-header">
+                <label for="mfgMargin">Manufacturer Margin</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockMfgMargin"> 🔒 Lock
+                </label>
+            </div>
             <div class="input-wrapper">
                 <input type="number" id="mfgMargin" placeholder="0.00" step="0.01" min="0">
                 <span class="percent-symbol">%</span>
@@ -229,7 +267,25 @@
         </div>
 
         <div class="field-group">
-            <label for="dealerCost">Dealer Cost</label>
+            <div class="field-header">
+                <label for="nre">NRE (Non-Recurring Engineering)</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockNre"> 🔒 Lock
+                </label>
+            </div>
+            <div class="input-wrapper">
+                <span class="dollar-symbol">$</span>
+                <input type="number" id="nre" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+            </div>
+        </div>
+
+        <div class="field-group">
+            <div class="field-header">
+                <label for="dealerCost">Dealer Cost (includes NRE)</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockDealerCost"> 🔒 Lock
+                </label>
+            </div>
             <div class="input-wrapper">
                 <span class="dollar-symbol">$</span>
                 <input type="number" id="dealerCost" class="has-prefix" placeholder="0.00" step="0.01" min="0">
@@ -237,7 +293,12 @@
         </div>
 
         <div class="field-group">
-            <label for="dealerMargin">Dealer Margin</label>
+            <div class="field-header">
+                <label for="dealerMargin">Dealer Margin</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockDealerMargin"> 🔒 Lock
+                </label>
+            </div>
             <div class="input-wrapper">
                 <input type="number" id="dealerMargin" placeholder="0.00" step="0.01" min="0">
                 <span class="percent-symbol">%</span>
@@ -245,28 +306,50 @@
         </div>
 
         <div class="field-group">
-            <label for="msrp">MSRP (Retail Price)</label>
+            <div class="field-header">
+                <label for="msrp">MSRP (Retail Price)</label>
+                <label class="lock-checkbox">
+                    <input type="checkbox" id="lockMsrp"> 🔒 Lock
+                </label>
+            </div>
             <div class="input-wrapper">
                 <span class="dollar-symbol">$</span>
                 <input type="number" id="msrp" class="has-prefix" placeholder="0.00" step="0.01" min="0">
             </div>
         </div>
 
-        <button class="clear-button" onclick="clearAll()">Clear All</button>
+        <button class="button copy-button" onclick="copyToClipboard()">📋 Copy Results</button>
+        <button class="button clear-button" onclick="clearAll()">Clear All</button>
     </div>
 
     <script>
         // Get all input elements
         const bomCostInput = document.getElementById('bomCost');
         const mfgMarginInput = document.getElementById('mfgMargin');
+        const nreInput = document.getElementById('nre');
         const dealerCostInput = document.getElementById('dealerCost');
         const dealerMarginInput = document.getElementById('dealerMargin');
         const msrpInput = document.getElementById('msrp');
 
-        const inputs = [bomCostInput, mfgMarginInput, dealerCostInput, dealerMarginInput, msrpInput];
+        const inputs = [bomCostInput, mfgMarginInput, nreInput, dealerCostInput, dealerMarginInput, msrpInput];
+
+        // Track locked fields
+        const locked = new Set();
 
         // Track which fields currently have user-entered values
         const userEntered = new Set();
+
+        // Add event listeners for lock checkboxes
+        ['bomCost', 'mfgMargin', 'nre', 'dealerCost', 'dealerMargin', 'msrp'].forEach(fieldId => {
+            const lockCheckbox = document.getElementById('lock' + fieldId.charAt(0).toUpperCase() + fieldId.slice(1));
+            lockCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    locked.add(fieldId);
+                } else {
+                    locked.delete(fieldId);
+                }
+            });
+        });
 
         // Add event listeners to all inputs
         inputs.forEach(input => {
@@ -284,10 +367,10 @@
             });
         });
 
-        // Clear fields that were calculated (not user-entered)
+        // Clear fields that were calculated (not user-entered and not locked)
         function clearCalculatedFields() {
             inputs.forEach(input => {
-                if (!userEntered.has(input.id)) {
+                if (!userEntered.has(input.id) && !locked.has(input.id)) {
                     input.value = '';
                 }
             });
@@ -306,41 +389,47 @@
         function calculate() {
             const bomCost = parseFloat(bomCostInput.value) || null;
             const mfgMargin = parseFloat(mfgMarginInput.value) || null;
+            const nre = parseFloat(nreInput.value) || 0; // Default to 0 if empty
             const dealerCost = parseFloat(dealerCostInput.value) || null;
             const dealerMargin = parseFloat(dealerMarginInput.value) || null;
             const msrp = parseFloat(msrpInput.value) || null;
 
             // Pricing formulas (margin as % of selling price):
-            // dealerCost = bomCost / (1 - mfgMargin/100)
+            // dealerCost = (bomCost / (1 - mfgMargin/100)) + NRE
             // msrp = dealerCost / (1 - dealerMargin/100)
             // All costs rounded up to nearest $9
 
             // Determine what we can calculate based on what we have
 
-            // Case 1: We have bomCost and mfgMargin -> calculate dealerCost
-            if (bomCost !== null && mfgMargin !== null && !userEntered.has('dealerCost')) {
+            // Case 1: We have bomCost and mfgMargin -> calculate dealerCost (including NRE)
+            if (bomCost !== null && mfgMargin !== null && !userEntered.has('dealerCost') && !locked.has('dealerCost')) {
                 if (mfgMargin >= 100) {
                     alert('Manufacturer margin must be less than 100%');
                     return;
                 }
-                const calculatedDealerCost = bomCost / (1 - mfgMargin / 100);
+                const baseDealerCost = bomCost / (1 - mfgMargin / 100);
+                const calculatedDealerCost = baseDealerCost + nre;
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
 
-            // Case 2: We have bomCost and dealerCost -> calculate mfgMargin
-            if (bomCost !== null && dealerCost !== null && !userEntered.has('mfgMargin') && dealerCost !== 0) {
-                const calculatedMfgMargin = (1 - bomCost / dealerCost) * 100;
-                mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+            // Case 2: We have bomCost and dealerCost -> calculate mfgMargin (accounting for NRE)
+            if (bomCost !== null && dealerCost !== null && !userEntered.has('mfgMargin') && !locked.has('mfgMargin') && dealerCost !== 0) {
+                const baseDealerCost = dealerCost - nre;
+                if (baseDealerCost > 0 && bomCost > 0) {
+                    const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
+                    mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+                }
             }
 
-            // Case 3: We have dealerCost and mfgMargin -> calculate bomCost
-            if (dealerCost !== null && mfgMargin !== null && !userEntered.has('bomCost')) {
-                const calculatedBomCost = dealerCost * (1 - mfgMargin / 100);
+            // Case 3: We have dealerCost and mfgMargin -> calculate bomCost (accounting for NRE)
+            if (dealerCost !== null && mfgMargin !== null && !userEntered.has('bomCost') && !locked.has('bomCost')) {
+                const baseDealerCost = dealerCost - nre;
+                const calculatedBomCost = baseDealerCost * (1 - mfgMargin / 100);
                 bomCostInput.value = roundUpToNearest9(calculatedBomCost).toFixed(2);
             }
 
             // Case 4: We have dealerCost and dealerMargin -> calculate msrp
-            if (dealerCost !== null && dealerMargin !== null && !userEntered.has('msrp')) {
+            if (dealerCost !== null && dealerMargin !== null && !userEntered.has('msrp') && !locked.has('msrp')) {
                 if (dealerMargin >= 100) {
                     alert('Dealer margin must be less than 100%');
                     return;
@@ -350,13 +439,13 @@
             }
 
             // Case 5: We have dealerCost and msrp -> calculate dealerMargin
-            if (dealerCost !== null && msrp !== null && !userEntered.has('dealerMargin') && msrp !== 0) {
+            if (dealerCost !== null && msrp !== null && !userEntered.has('dealerMargin') && !locked.has('dealerMargin') && msrp !== 0) {
                 const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
                 dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
             }
 
             // Case 6: We have msrp and dealerMargin -> calculate dealerCost
-            if (msrp !== null && dealerMargin !== null && !userEntered.has('dealerCost')) {
+            if (msrp !== null && dealerMargin !== null && !userEntered.has('dealerCost') && !locked.has('dealerCost')) {
                 const calculatedDealerCost = msrp * (1 - dealerMargin / 100);
                 dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
             }
@@ -402,11 +491,46 @@
 
         }
 
+        function copyToClipboard() {
+            const bomCost = bomCostInput.value || '—';
+            const mfgMargin = mfgMarginInput.value || '—';
+            const nre = nreInput.value || '—';
+            const dealerCost = dealerCostInput.value || '—';
+            const dealerMargin = dealerMarginInput.value || '—';
+            const msrp = msrpInput.value || '—';
+
+            const text = `BOM Cost: $${bomCost}
+Manufacturer Margin: ${mfgMargin}%
+NRE: $${nre}
+Dealer Cost: $${dealerCost}
+Dealer Margin: ${dealerMargin}%
+MSRP: $${msrp}`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✓ Copied!';
+                btn.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy to clipboard');
+            });
+        }
+
         function clearAll() {
             inputs.forEach(input => {
                 input.value = '';
             });
             userEntered.clear();
+            locked.clear();
+            // Uncheck all lock checkboxes
+            document.querySelectorAll('.lock-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
         }
     </script>
 </body>
