@@ -135,6 +135,34 @@
             transform: translateY(0);
         }
 
+        .recalc-btn {
+            position: absolute;
+            right: 45px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .recalc-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .recalc-btn:active {
+            transform: scale(0.98);
+        }
+
+        input.has-recalc {
+            padding-right: 90px;
+        }
+
         .info-box {
             background: #f0f4ff;
             border-left: 4px solid #667eea;
@@ -196,7 +224,7 @@
     <div class="calculator-container">
         <h1>Pricing Calculator</h1>
         <p class="subtitle">Enter any 2 values to calculate the rest</p>
-        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v5.0 - Recalculate Button</p>
+        <p style="text-align: center; color: #999; font-size: 11px; margin: -20px 0 20px 0;">v6.0 - Individual Field Recalculation</p>
 
         <div class="info-box">
             💡 <strong>How it works:</strong> Input any two values and the calculator will automatically compute the remaining fields based on the pricing flow.
@@ -230,7 +258,8 @@
         <div class="field-group">
             <label for="mfgMargin">Manufacturer Margin</label>
             <div class="input-wrapper">
-                <input type="number" id="mfgMargin" placeholder="0.00" step="0.01" min="0">
+                <input type="number" id="mfgMargin" class="has-recalc" placeholder="0.00" step="0.01" min="0">
+                <button class="recalc-btn" onclick="recalcMfgMargin()">🔄 Recalc</button>
                 <span class="percent-symbol">%</span>
             </div>
         </div>
@@ -247,14 +276,16 @@
             <label for="dealerCost">Dealer Cost (includes NRE)</label>
             <div class="input-wrapper">
                 <span class="dollar-symbol">$</span>
-                <input type="number" id="dealerCost" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+                <input type="number" id="dealerCost" class="has-prefix has-recalc" placeholder="0.00" step="0.01" min="0">
+                <button class="recalc-btn" onclick="recalcDealerCost()">🔄 Recalc</button>
             </div>
         </div>
 
         <div class="field-group">
             <label for="dealerMargin">Dealer Margin</label>
             <div class="input-wrapper">
-                <input type="number" id="dealerMargin" placeholder="0.00" step="0.01" min="0">
+                <input type="number" id="dealerMargin" class="has-recalc" placeholder="0.00" step="0.01" min="0">
+                <button class="recalc-btn" onclick="recalcDealerMargin()">🔄 Recalc</button>
                 <span class="percent-symbol">%</span>
             </div>
         </div>
@@ -263,12 +294,13 @@
             <label for="msrp">MSRP (Retail Price)</label>
             <div class="input-wrapper">
                 <span class="dollar-symbol">$</span>
-                <input type="number" id="msrp" class="has-prefix" placeholder="0.00" step="0.01" min="0">
+                <input type="number" id="msrp" class="has-prefix has-recalc" placeholder="0.00" step="0.01" min="0">
+                <button class="recalc-btn" onclick="recalcMsrp()">🔄 Recalc</button>
             </div>
         </div>
 
         <button class="button copy-button" onclick="copyToClipboard()">📋 Copy Results</button>
-        <button class="button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" onclick="calculate()">🔄 Recalculate</button>
+        <button class="button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" onclick="calculate()">🧮 Calculate All</button>
         <button class="button clear-button" onclick="clearAll()">Clear All</button>
     </div>
 
@@ -290,6 +322,29 @@
         inputs.forEach(input => {
             input.addEventListener('input', function(e) {
                 currentlyEditing = this.id;
+
+                // Auto-update certain fields on input
+                if (this.id === 'msrp') {
+                    // Automatically update Dealer Margin when MSRP changes
+                    const msrp = parseFloat(msrpInput.value) || null;
+                    const dealerCost = parseFloat(dealerCostInput.value) || null;
+                    if (msrp !== null && dealerCost !== null && dealerCost !== 0) {
+                        const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
+                        dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
+                    }
+                } else if (this.id === 'dealerCost') {
+                    // Automatically update Mfg Margin when Dealer Cost changes
+                    const dealerCost = parseFloat(dealerCostInput.value) || null;
+                    const bomCost = parseFloat(bomCostInput.value) || null;
+                    const nre = parseFloat(nreInput.value) || 0;
+                    if (dealerCost !== null && bomCost !== null) {
+                        const baseDealerCost = dealerCost - nre;
+                        if (baseDealerCost > 0 && bomCost > 0) {
+                            const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
+                            mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+                        }
+                    }
+                }
 
                 // Clear timeout
                 clearTimeout(window.editTimeout);
@@ -365,6 +420,55 @@
             }
 
             // BOM Cost and NRE are NEVER calculated
+        }
+
+        // Individual field recalculation functions
+        function recalcMfgMargin() {
+            const dealerCost = parseFloat(dealerCostInput.value) || null;
+            const bomCost = parseFloat(bomCostInput.value) || null;
+            const nre = parseFloat(nreInput.value) || 0;
+
+            if (dealerCost !== null && bomCost !== null) {
+                const baseDealerCost = dealerCost - nre;
+                if (baseDealerCost > 0 && bomCost > 0) {
+                    const calculatedMfgMargin = (1 - bomCost / baseDealerCost) * 100;
+                    mfgMarginInput.value = calculatedMfgMargin.toFixed(2);
+                }
+            }
+        }
+
+        function recalcDealerCost() {
+            const bomCost = parseFloat(bomCostInput.value) || null;
+            const mfgMargin = parseFloat(mfgMarginInput.value) || null;
+            const nre = parseFloat(nreInput.value) || 0;
+
+            if (bomCost !== null && mfgMargin !== null) {
+                if (mfgMargin >= 100) return;
+                const baseDealerCost = bomCost / (1 - mfgMargin / 100);
+                const calculatedDealerCost = baseDealerCost + nre;
+                dealerCostInput.value = roundUpToNearest9(calculatedDealerCost).toFixed(2);
+            }
+        }
+
+        function recalcDealerMargin() {
+            const msrp = parseFloat(msrpInput.value) || null;
+            const dealerCost = parseFloat(dealerCostInput.value) || null;
+
+            if (msrp !== null && dealerCost !== null && dealerCost !== 0) {
+                const calculatedDealerMargin = (1 - dealerCost / msrp) * 100;
+                dealerMarginInput.value = calculatedDealerMargin.toFixed(2);
+            }
+        }
+
+        function recalcMsrp() {
+            const dealerCost = parseFloat(dealerCostInput.value) || null;
+            const dealerMargin = parseFloat(dealerMarginInput.value) || null;
+
+            if (dealerCost !== null && dealerMargin !== null) {
+                if (dealerMargin >= 100) return;
+                const calculatedMsrp = dealerCost / (1 - dealerMargin / 100);
+                msrpInput.value = roundUpToNearest9(calculatedMsrp).toFixed(2);
+            }
         }
 
         function copyToClipboard() {
